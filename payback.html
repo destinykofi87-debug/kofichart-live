@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>KOFI PAYBACK</title>
+<style>
+body{margin:0;background:#111;color:#fff;font-family:Arial;text-align:center;touch-action:none;overflow:hidden}
+#hud{display:flex;justify-content:space-between;padding:10px;background:#000;border-bottom:2px solid gold}
+#gameWrap{position:relative;width:100vw;max-width:420px;margin:0 auto}
+canvas{background:#2a2a2a;border:2px solid gold;display:block}
+#controls{position:absolute;bottom:10px;left:0;width:100%;display:flex;justify-content:space-between;padding:0 10px;box-sizing:border-box}
+.btn{width:60px;height:60px;background:rgba(255,255,255,0.2);border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;user-select:none}
+#shootBtn{width:80px;height:80px;background:rgba(255,0,0,0.5);border-color:gold}
+#lock{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:20;display:none;flex-direction:column;justify-content:center;align-items:center;padding:20px;box-sizing:border-box}
+</style>
+</head>
+<body>
+<div id="hud">
+<span>🔫 Kills: <b id="kills">0</b></span>
+<span>🚗 <b id="mode">IN CAR</b></span>
+<span>💰 <b id="cash">$0</b></span>
+</div>
+<div id="gameWrap">
+<canvas id="c" width="400" height="600"></canvas>
+<div id="lock">
+<h2>🔒 WANTED LEVEL 2 LOCKED</h2>
+<p>Police don block you! You need GAME PASS to continue payback!</p>
+<button onclick="getPass()" style="padding:15px 30px;background:gold;border:none;border-radius:10px;font-weight:bold;font-size:18px;">GET GAME PASS FREE</button>
+<p style="font-size:12px;margin-top:10px">Register with EJGT9ZNYP6VG to unlock</p>
+<button onclick="alreadyHave()" style="background:#fff;font-size:12px;padding:8px 15px;border:none;border-radius:5px;margin-top:10px;">I don register already</button>
+</div>
+<div id="controls">
+<div style="display:flex;gap:10px">
+<div class="btn" id="left">◀️</div>
+<div class="btn" id="right">▶️</div>
+</div>
+<div style="display:flex;gap:10px;align-items:center">
+<div class="btn" id="enter">🚪</div>
+<div class="btn" id="shootBtn">🔫</div>
+</div>
+</div>
+</div>
+<p style="font-size:12px">Move: ◀️ ▶️ | 🚪 = Enter/Exit Car | 🔫 = Shoot | Kill 5 to unlock Payback Mode</p>
+
+<script>
+const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+let kills=0, cash=0, inCar=true, gameRun=true;
+let player={x:200,y:300,angle:0,speed:0}
+let bullets=[], enemies=[], cars=[];
+let keys={};
+
+// Create enemy cars / people
+for(let i=0;i<4;i++){ enemies.push({x:Math.random()*350,y:Math.random()*200,angle:Math.random()*6,alive:true}) }
+for(let i=0;i<3;i++){ cars.push({x:Math.random()*350,y:Math.random()*500+100,angle:0}) }
+
+function draw(){
+if(!gameRun) return;
+ctx.fillStyle='#3a3a3a'; ctx.fillRect(0,0,400,600);
+// Road lines
+ctx.strokeStyle='#555'; ctx.setLineDash([20,20]); ctx.beginPath(); ctx.moveTo(200,0); ctx.lineTo(200,600); ctx.stroke(); ctx.setLineDash([]);
+// Cars on map
+cars.forEach(car=>{ ctx.save(); ctx.translate(car.x,car.y); ctx.fillStyle='#666'; ctx.fillRect(-20,-35,40,70); ctx.restore(); });
+// Player
+ctx.save(); ctx.translate(player.x,player.y); ctx.rotate(player.angle);
+if(inCar){ ctx.fillStyle='red'; ctx.fillRect(-15,-25,30,50); ctx.fillStyle='#88f'; ctx.fillRect(-10,-15,20,10); }
+else { ctx.fillStyle='orange'; ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillRect(0,-15,2,20); }
+ctx.restore();
+// Enemies
+enemies.forEach(e=>{
+if(!e.alive) return;
+ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(e.angle);
+ctx.fillStyle=e.alive?'yellow':'#333'; ctx.fillRect(-12,-20,24,40);
+ctx.restore();
+if(Math.random()<0.02 && e.alive){ e.x+=(Math.random()-0.5)*2; e.y+=(Math.random()-0.5)*2; }
+});
+// Bullets
+bullets.forEach((b,i)=>{
+b.x+=Math.cos(b.angle)*8; b.y+=Math.sin(b.angle)*8;
+ctx.fillStyle='#ff0'; ctx.beginPath(); ctx.arc(b.x,b.y,4,0,Math.PI*2); ctx.fill();
+enemies.forEach(en=>{
+if(en.alive && Math.hypot(b.x-en.x,b.y-en.y)<20){ en.alive=false; kills++; cash+=50; document.getElementById('kills').innerText=kills; document.getElementById('cash').innerText=cash; setTimeout(()=>{en.x=Math.random()*350; en.y=Math.random()*200; en.alive=true},2000); }
+});
+if(b.x<0||b.x>400||b.y<0||b.y>600) bullets.splice(i,1);
+});
+
+if(inCar){
+if(keys['left']||keys['ArrowLeft']) player.angle-=0.05;
+if(keys['right']||keys['ArrowRight']) player.angle+=0.05;
+player.speed=2; player.x+=Math.sin(player.angle)*player.speed; player.y-=Math.cos(player.angle)*player.speed;
+} else {
+if(keys['left']) player.x-=3; if(keys['right']) player.x+=3; if(keys['up']) player.y-=3; if(keys['down']) player.y+=3;
+}
+if(player.x<0)player.x=400; if(player.x>400)player.x=0; if(player.y<0)player.y=600; if(player.y>600)player.y=0;
+
+// GAME PASS LOCK AT 5 KILLS
+if(kills>=5 && localStorage.getItem('kofi_payback_pass')!='unlocked'){
+document.getElementById('lock').style.display='flex'; gameRun=false;
+}
+requestAnimationFrame(draw);
+}
+draw();
+
+// Controls
+function setKey(k,v){keys[k]=v}
+document.getElementById('left').addEventListener('touchstart',()=>setKey('left',true)); 
+document.getElementById('left').addEventListener('touchend',()=>setKey('left',false));
+document.getElementById('right').addEventListener('touchstart',()=>setKey('right',true));
+document.getElementById('right').addEventListener('touchend',()=>setKey('right',false));
+window.addEventListener('keydown',e=>setKey(e.key,true)); window.addEventListener('keyup',e=>setKey(e.key,false));
+
+document.getElementById('enter').addEventListener('click',()=>{
+inCar=!inCar; document.getElementById('mode').innerText=inCar?'IN CAR':'ON FOOT';
+});
+document.getElementById('shootBtn').addEventListener('click',()=>{
+bullets.push({x:player.x,y:player.y,angle:player.angle-Math.PI/2});
+if(!inCar) bullets[bullets.length-1].angle = player.angle; // shoot forward when on foot
+});
+
+function getPass(){
+window.open('https://t.deriv.link?t=EJGT9ZNYP6VG','_blank');
+setTimeout(()=>{
+let id=prompt('After you register with EJGT9ZNYP6VG, enter Deriv ID to unlock PAYBACK MODE:');
+if(id){localStorage.setItem('kofi_payback_pass','unlocked'); document.getElementById('lock').style.display='none'; gameRun=true; kills=0; draw();}
+},1000);
+}
+function alreadyHave(){
+let id=prompt('Enter Deriv ID:'); if(id){localStorage.setItem('kofi_payback_pass','unlocked'); document.getElementById('lock').style.display='none'; gameRun=true; kills=0; draw();}
+}
+if(localStorage.getItem('kofi_payback_pass')=='unlocked'){ document.getElementById('lock').style.display='none'; }
+</script>
+</body>
+</html>
